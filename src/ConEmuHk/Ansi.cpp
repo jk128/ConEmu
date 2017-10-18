@@ -447,9 +447,11 @@ void CEAnsi::GetFeatures(bool* pbAnsiAllowed, bool* pbSuppressBells)
 //struct DisplayParm
 //{
 //	BOOL WasSet;
-//	BOOL BrightOrBold;     // 1
-//	BOOL ItalicOrInverse;  // 3
-//	BOOL BackOrUnderline;  // 4
+//	BOOL Bold;             // 1
+//	BOOL Italic;           // 3
+//	BOOL Underline;        // 4
+//	BOOL BrightFore;       // 90-97
+//	BOOL BrightBack;       // 100-107
 //	int  TextColor;        // 30-37,38,39
 //	BOOL Text256;          // 38
 //    int  BackColor;        // 40-47,48,49
@@ -602,13 +604,6 @@ void CEAnsi::ReSetDisplayParm(HANDLE hConsoleOutput, BOOL bReset, BOOL bApply)
 					attr.Attributes.Flags |= CECF_FG_24BIT;
 				attr.Attributes.ForegroundColor = RgbMap[TextColor&0xFF];
 			}
-
-			if (gDisplayParm.BrightOrBold)
-				attr.Attributes.Flags |= CECF_FG_BOLD;
-			if (gDisplayParm.ItalicOrInverse)
-				attr.Attributes.Flags |= CECF_FG_ITALIC;
-			if (gDisplayParm.BackOrUnderline)
-				attr.Attributes.Flags |= CECF_FG_UNDERLINE;
 		}
 		else if (TextColor & 0x8)
 		{
@@ -619,8 +614,15 @@ void CEAnsi::ReSetDisplayParm(HANDLE hConsoleOutput, BOOL bReset, BOOL bApply)
 		else
 		{
 			attr.Attributes.ForegroundColor |= ClrMap[TextColor&0x7]
-				| (gDisplayParm.BrightOrBold ? 0x08 : 0);
+				| (gDisplayParm.BrightFore ? 0x08 : 0);
 		}
+
+		if (gDisplayParm.Bold)
+			attr.Attributes.Flags |= CECF_FG_BOLD;
+		if (gDisplayParm.Italic)
+			attr.Attributes.Flags |= CECF_FG_ITALIC;
+		if (gDisplayParm.Underline)
+			attr.Attributes.Flags |= CECF_FG_UNDERLINE;
 
 		if (Back256)
 		{
@@ -645,7 +647,7 @@ void CEAnsi::ReSetDisplayParm(HANDLE hConsoleOutput, BOOL bReset, BOOL bApply)
 		else
 		{
 			attr.Attributes.BackgroundColor |= ClrMap[BackColor&0x7]
-				| ((gDisplayParm.BackOrUnderline && !Text256) ? 0x8 : 0);
+				| (gDisplayParm.BrightBack ? 0x8 : 0);
 		}
 
 
@@ -3043,34 +3045,34 @@ CSI P s @			Insert P s (Blank) Character(s) (default = 1) (ICH)
 					ReSetDisplayParm(hConsoleOutput, TRUE, FALSE);
 					break;
 				case 1:
-					gDisplayParm.BrightOrBold = TRUE;
+					gDisplayParm.Bold = TRUE;
 					gDisplayParm.WasSet = TRUE;
 					break;
 				case 2:
 					// Faint, decreased intensity (ISO 6429)
 				case 22:
 					// Normal (neither bold nor faint).
-					gDisplayParm.BrightOrBold = FALSE;
+					gDisplayParm.Bold = FALSE;
 					gDisplayParm.WasSet = TRUE;
 					break;
 				case 3:
-					gDisplayParm.ItalicOrInverse = TRUE;
+					gDisplayParm.Inverse = TRUE;
 					gDisplayParm.WasSet = TRUE;
 					break;
 				case 23:
 					// Not italicized (ISO 6429)
-					gDisplayParm.ItalicOrInverse = FALSE;
+					gDisplayParm.Inverse = FALSE;
 					gDisplayParm.WasSet = TRUE;
 					break;
 				case 4: // Underlined
-				case 5: // Blink
+				case 5: // #TODO ANSI Blink (less than 150 per minute)
 					TODO("Check standard");
-					gDisplayParm.BackOrUnderline = TRUE;
+					gDisplayParm.Underline = TRUE;
 					gDisplayParm.WasSet = TRUE;
 					break;
 				case 24:
 					// Not underlined
-					gDisplayParm.BackOrUnderline = FALSE;
+					gDisplayParm.Underline = FALSE;
 					gDisplayParm.WasSet = TRUE;
 					break;
 				case 7:
@@ -3089,10 +3091,7 @@ CSI P s @			Insert P s (Blank) Character(s) (default = 1) (ICH)
 					break;
 				case 30: case 31: case 32: case 33: case 34: case 35: case 36: case 37:
 					gDisplayParm.TextColor = (Code.ArgV[i] - 30);
-					if (gDisplayParm.BrightOrBold == 2)
-						gDisplayParm.BrightOrBold = FALSE;
-					else
-						gDisplayParm.BrightOrBold &= ~2;
+					gDisplayParm.BrightFore = FALSE;
 					gDisplayParm.Text256 = FALSE;
 					gDisplayParm.WasSet = TRUE;
 					break;
@@ -3124,10 +3123,7 @@ CSI P s @			Insert P s (Blank) Character(s) (default = 1) (ICH)
 					break;
 				case 40: case 41: case 42: case 43: case 44: case 45: case 46: case 47:
 					gDisplayParm.BackColor = (Code.ArgV[i] - 40);
-					if (gDisplayParm.BackOrUnderline == 2)
-						gDisplayParm.BackOrUnderline = FALSE;
-					else
-						gDisplayParm.BackOrUnderline &= ~2;
+					gDisplayParm.BrightBack = FALSE;
 					gDisplayParm.Back256 = FALSE;
 					gDisplayParm.WasSet = TRUE;
 					break;
@@ -3160,13 +3156,13 @@ CSI P s @			Insert P s (Blank) Character(s) (default = 1) (ICH)
 				case 90: case 91: case 92: case 93: case 94: case 95: case 96: case 97:
 					gDisplayParm.TextColor = (Code.ArgV[i] - 90) | 0x8;
 					gDisplayParm.Text256 = FALSE;
-					gDisplayParm.BrightOrBold |= 2;
+					gDisplayParm.BrightFore = TRUE;
 					gDisplayParm.WasSet = TRUE;
 					break;
 				case 100: case 101: case 102: case 103: case 104: case 105: case 106: case 107:
 					gDisplayParm.BackColor = (Code.ArgV[i] - 100) | 0x8;
 					gDisplayParm.Back256 = FALSE;
-					gDisplayParm.BackOrUnderline |= 2;
+					gDisplayParm.BrightBack = TRUE;
 					gDisplayParm.WasSet = TRUE;
 					break;
 				case 10:
@@ -3549,14 +3545,16 @@ void CEAnsi::WriteAnsiCode_VIM(OnWriteConsoleW_t _WriteConsoleW, HANDLE hConsole
 				switch (Code.ArgV[i])
 				{
 				case 7:
-					gDisplayParm.BrightOrBold = FALSE;
-					gDisplayParm.ItalicOrInverse = FALSE;
-					gDisplayParm.BackOrUnderline = FALSE;
+					gDisplayParm.Bold = FALSE;
+					gDisplayParm.Italic = FALSE;
+					gDisplayParm.Underline = FALSE;
+					gDisplayParm.BrightFore = FALSE;
+					gDisplayParm.BrightBack = FALSE;
 					gDisplayParm.Inverse = FALSE;
 					gDisplayParm.WasSet = TRUE;
 					break;
 				case 15:
-					gDisplayParm.BrightOrBold = TRUE;
+					gDisplayParm.Bold = TRUE;
 					gDisplayParm.WasSet = TRUE;
 					break;
 				case 112:
