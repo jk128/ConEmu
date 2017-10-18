@@ -575,20 +575,20 @@ void CEAnsi::ReSetDisplayParm(HANDLE hConsoleOutput, BOOL bReset, BOOL bApply)
 		int  BackColor;        // 40-47,48,49
 		BOOL Back256;          // 48
 
-		if (!gDisplayParm.Inverse)
+		//if (!gDisplayParm.Inverse)
 		{
 			TextColor = gDisplayParm.TextColor;
 			Text256 = gDisplayParm.Text256;
 			BackColor = gDisplayParm.BackColor;
 			Back256 = gDisplayParm.Back256;
 		}
-		else
-		{
-			TextColor = gDisplayParm.BackColor;
-			Text256 = gDisplayParm.Back256;
-			BackColor = gDisplayParm.TextColor;
-			Back256 = gDisplayParm.Text256;
-		}
+		//else
+		//{
+		//	TextColor = gDisplayParm.BackColor;
+		//	Text256 = gDisplayParm.Back256;
+		//	BackColor = gDisplayParm.TextColor;
+		//	Back256 = gDisplayParm.Text256;
+		//}
 
 
 		if (Text256)
@@ -623,6 +623,8 @@ void CEAnsi::ReSetDisplayParm(HANDLE hConsoleOutput, BOOL bReset, BOOL bApply)
 			attr.Attributes.Flags |= CECF_FG_ITALIC;
 		if (gDisplayParm.Underline)
 			attr.Attributes.Flags |= CECF_FG_UNDERLINE;
+		if (gDisplayParm.Inverse)
+			attr.Attributes.Flags |= CECF_REVERSE;
 
 		if (Back256)
 		{
@@ -3045,6 +3047,7 @@ CSI P s @			Insert P s (Blank) Character(s) (default = 1) (ICH)
 					ReSetDisplayParm(hConsoleOutput, TRUE, FALSE);
 					break;
 				case 1:
+					// Bold
 					gDisplayParm.Bold = TRUE;
 					gDisplayParm.WasSet = TRUE;
 					break;
@@ -3056,17 +3059,21 @@ CSI P s @			Insert P s (Blank) Character(s) (default = 1) (ICH)
 					gDisplayParm.WasSet = TRUE;
 					break;
 				case 3:
-					gDisplayParm.Inverse = TRUE;
+					// Italic
+					gDisplayParm.Italic = TRUE;
 					gDisplayParm.WasSet = TRUE;
 					break;
 				case 23:
-					// Not italicized (ISO 6429)
-					gDisplayParm.Inverse = FALSE;
+					// Not italic
+					gDisplayParm.Italic = FALSE;
 					gDisplayParm.WasSet = TRUE;
 					break;
+				case 5: // #TODO ANSI Slow Blink (less than 150 per minute)
+				case 6: // #TODO ANSI Rapid Blink (150+ per minute)
+				case 25: // #TODO ANSI Blink Off
+					DumpKnownEscape(Code.pszEscStart,Code.nTotalLen,de_Ignored);
+					break;
 				case 4: // Underlined
-				case 5: // #TODO ANSI Blink (less than 150 per minute)
-					TODO("Check standard");
 					gDisplayParm.Underline = TRUE;
 					gDisplayParm.WasSet = TRUE;
 					break;
@@ -3084,10 +3091,6 @@ CSI P s @			Insert P s (Blank) Character(s) (default = 1) (ICH)
 					// Positive (not inverse)
 					gDisplayParm.Inverse = FALSE;
 					gDisplayParm.WasSet = TRUE;
-					break;
-				case 25:
-					// Steady (not blinking)
-					DumpKnownEscape(Code.pszEscStart,Code.nTotalLen,de_Ignored);
 					break;
 				case 30: case 31: case 32: case 33: case 34: case 35: case 36: case 37:
 					gDisplayParm.TextColor = (Code.ArgV[i] - 30);

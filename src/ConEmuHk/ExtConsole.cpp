@@ -327,6 +327,8 @@ static void ExtPrepareColor(const ConEmuColor& Attributes, AnnotationInfo& t, WO
 
 	if (Flags & CECF_FG_UNDERLINE)
 		n |= COMMON_LVB_UNDERSCORE;
+	if (Flags & CECF_REVERSE)
+		n |= COMMON_LVB_REVERSE_VIDEO;
 }
 
 // Это это "цвет по умолчанию".
